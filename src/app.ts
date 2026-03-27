@@ -8,6 +8,7 @@ import errorHandlerPlugin from './plugins/error-handler';
 import requestContextPlugin from './plugins/request-context';
 import healthRoutes from './modules/health/health.route';
 import protectedRoutes from './modules/health/protected.route';
+import leadsRoutes from './modules/leads/leads.route';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -24,9 +25,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(dbPlugin);
   await app.register(authPlugin);
   await app.register(errorHandlerPlugin);
-  
+
   await app.register(healthRoutes);
   await app.register(protectedRoutes);
+  await app.register(leadsRoutes);
 
   return app;
 }
