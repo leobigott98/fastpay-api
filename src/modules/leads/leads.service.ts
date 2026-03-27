@@ -1,16 +1,16 @@
-import { randomUUID } from 'crypto';
-import type { FastifyInstance } from 'fastify';
+import { randomUUID } from "crypto";
+import type { FastifyInstance } from "fastify";
 import type {
   CreateLeadRequest,
   CreateLeadResponse,
   LeadDetailsResponse,
-} from './leads.types';
-import { leadsRepository } from './leads.repository';
-import { AppError } from '../../shared/errors/app-error';
-import { ErrorCodes } from '../../shared/errors/error-codes';
+} from "./leads.types";
+import { leadsRepository } from "./leads.repository";
+import { AppError } from "../../shared/errors/app-error";
+import { ErrorCodes } from "../../shared/errors/error-codes";
 
 function toSqlDateTime(date: Date): string {
-  return date.toISOString().slice(0, 19).replace('T', ' ');
+  return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
 export const leadsService = {
@@ -21,16 +21,35 @@ export const leadsService = {
       idempotencyKey: string;
       actorId: string;
       correlationId: string;
-    }
+    },
   ): Promise<CreateLeadResponse> {
     const conn = await app.db.getConnection();
+
+    const normalizedPayload = {
+        ...payload,
+        source: payload.source.trim(),
+        channel: payload.channel,
+        fullName: payload.fullName.trim(),
+        documentType: payload.documentType?.trim(),
+        documentNumber: payload.documentNumber?.trim(),
+        phone: payload.phone.trim(),
+        email: payload.email?.trim().toLowerCase(),
+        businessName: payload.businessName?.trim(),
+        notes: payload.notes?.trim(),
+        externalReference: payload.externalReference.trim(),
+        interestedServices: [
+          ...new Set(
+            payload.interestedServices.map((service) => service.trim()),
+          ),
+        ],
+      };
 
     try {
       await conn.beginTransaction();
 
       const existingLead = await leadsRepository.findByExternalReference(
         conn,
-        payload.externalReference
+        normalizedPayload.externalReference,
       );
 
       // Control inicial de duplicados por externalReference.
@@ -49,18 +68,18 @@ export const leadsService = {
 
       await leadsRepository.insertLead(conn, {
         leadId,
-        source: payload.source,
-        channel: payload.channel,
-        fullName: payload.fullName,
-        documentType: payload.documentType,
-        documentNumber: payload.documentNumber,
-        phone: payload.phone,
-        email: payload.email,
-        businessName: payload.businessName,
-        notes: payload.notes,
-        consentAccepted: payload.consentAccepted ?? false,
-        externalReference: payload.externalReference,
-        status: 'LEAD_CREATED',
+        source: normalizedPayload.source,
+        channel: normalizedPayload.channel,
+        fullName: normalizedPayload.fullName,
+        documentType: normalizedPayload.documentType,
+        documentNumber: normalizedPayload.documentNumber,
+        phone: normalizedPayload.phone,
+        email: normalizedPayload.email,
+        businessName: normalizedPayload.businessName,
+        notes: normalizedPayload.notes,
+        consentAccepted: normalizedPayload.consentAccepted ?? false,
+        externalReference: normalizedPayload.externalReference,
+        status: "LEAD_CREATED",
         createdAt: now,
         updatedAt: now,
       });
@@ -68,16 +87,16 @@ export const leadsService = {
       await leadsRepository.insertLeadServices(
         conn,
         leadId,
-        payload.interestedServices,
-        now
+        normalizedPayload.interestedServices,
+        now,
       );
 
       await leadsRepository.insertAuditLog(conn, {
-        eventType: 'LEAD_CREATED',
-        resourceType: 'lead',
+        eventType: "LEAD_CREATED",
+        resourceType: "lead",
         resourceId: leadId,
-        externalReference: payload.externalReference,
-        actorType: 'system_client',
+        externalReference: normalizedPayload.externalReference,
+        actorType: "system_client",
         actorId: context.actorId,
         correlationId: context.correlationId,
         createdAt: now,
@@ -87,7 +106,7 @@ export const leadsService = {
 
       return {
         leadId,
-        status: 'LEAD_CREATED',
+        status: "LEAD_CREATED",
         createdAt: now,
       };
     } catch (error) {
@@ -104,7 +123,7 @@ export const leadsService = {
     context: {
       actorId: string;
       correlationId: string;
-    }
+    },
   ): Promise<LeadDetailsResponse> {
     const conn = await app.db.getConnection();
 
@@ -115,18 +134,18 @@ export const leadsService = {
         throw new AppError({
           statusCode: 404,
           code: ErrorCodes.NOT_FOUND,
-          message: 'Lead not found',
+          message: "Lead not found",
         });
       }
 
       const services = await leadsRepository.getServicesByLeadId(conn, leadId);
 
       await leadsRepository.insertAuditLog(conn, {
-        eventType: 'LEAD_READ',
-        resourceType: 'lead',
+        eventType: "LEAD_READ",
+        resourceType: "lead",
         resourceId: leadId,
         externalReference: lead.external_reference,
-        actorType: 'system_client',
+        actorType: "system_client",
         actorId: context.actorId,
         correlationId: context.correlationId,
         createdAt: toSqlDateTime(new Date()),

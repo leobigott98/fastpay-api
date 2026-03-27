@@ -42,7 +42,14 @@ export const createLeadSchema = {
         leadId: { type: 'string' },
         status: { type: 'string' },
         createdAt: { type: 'string' }
+      },
+      examples: [
+      {
+        leadId: 'ld_8fa0d63e-1f4f-40ba-b67c-4acdb1d3d3ce',
+        status: 'LEAD_CREATED',
+        createdAt: '2026-03-18 15:04:22'
       }
+    ]
     }
   }
 } as const;

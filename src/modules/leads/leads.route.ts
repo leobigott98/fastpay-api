@@ -26,7 +26,7 @@ export default async function leadsRoutes(app: FastifyInstance) {
     '/v1/leads/:leadId',
     {
       schema: getLeadByIdSchema,
-      preHandler: [app.authenticate, app.authorize(['leads:read'])],
+      preHandler: [app.authenticate, app.authorize(['erp:leads:read'])],
     },
     getLeadByIdHandler
   );
