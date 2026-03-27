@@ -16,7 +16,7 @@ export const env = {
   DB_PASSWORD: required('DB_PASSWORD', process.env.DB_PASSWORD),
   DB_NAME: required('DB_NAME', process.env.DB_NAME),
 
-  JWT_PUBLIC_KEY: required('JWT_PUBLIC_KEY', process.env.JWT_PUBLIC_KEY),
+  JWT_PUBLIC_KEY_PATH: required('JWT_PUBLIC_KEY_PATH', process.env.JWT_PUBLIC_KEY_PATH),
   JWT_EXPECTED_ISSUER: required('JWT_EXPECTED_ISSUER', process.env.JWT_EXPECTED_ISSUER),
   JWT_EXPECTED_AUDIENCE: required('JWT_EXPECTED_AUDIENCE', process.env.JWT_EXPECTED_AUDIENCE),
 
