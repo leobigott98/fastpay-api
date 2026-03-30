@@ -9,6 +9,7 @@ import requestContextPlugin from './plugins/request-context';
 import healthRoutes from './modules/health/health.route';
 import protectedRoutes from './modules/health/protected.route';
 import leadsRoutes from './modules/leads/leads.route';
+import preRegistrationsRoutes from './modules/preRegistrations/preRegistrations.route';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -29,6 +30,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(protectedRoutes);
   await app.register(leadsRoutes);
+  await app.register(preRegistrationsRoutes);
 
   return app;
 }
