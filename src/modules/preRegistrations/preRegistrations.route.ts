@@ -1,29 +1,38 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from "fastify";
 import {
   createPreRegistrationHandler,
   getPreRegistrationByIdHandler,
-} from './preRegistrations.controller';
+} from "./preRegistrations.controller";
 import {
   createPreRegistrationSchema,
   getPreRegistrationByIdSchema,
-} from './preRegistrations.schema';
+} from "./preRegistrations.schema";
+import { CreatePreRegistrationRequest } from "./preRegistrations.types";
 
 export default async function preRegistrationsRoutes(app: FastifyInstance) {
-  app.post(
-    '/v1/pre-registrations',
+  app.post<{
+    Headers: { "idempotency-key": string };
+    Body: CreatePreRegistrationRequest;
+  }>(
+    "/v1/pre-registrations",
     {
       schema: createPreRegistrationSchema,
-      preHandler: [app.authenticate, app.authorize(['preregistrations:create'])],
+      preHandler: [
+        app.authenticate,
+        app.authorize(["preregistrations:create"]),
+      ],
     },
-    createPreRegistrationHandler
+    createPreRegistrationHandler,
   );
 
-  app.get(
-    '/v1/pre-registrations/:preRegistrationId',
+  app.get<{
+    Params: { preRegistrationId: string };
+  }>(
+    "/v1/pre-registrations/:preRegistrationId",
     {
       schema: getPreRegistrationByIdSchema,
-      preHandler: [app.authenticate, app.authorize(['preregistrations:read'])],
+      preHandler: [app.authenticate, app.authorize(["preregistrations:read"])],
     },
-    getPreRegistrationByIdHandler
+    getPreRegistrationByIdHandler,
   );
 }
