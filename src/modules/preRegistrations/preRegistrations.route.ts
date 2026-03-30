@@ -19,7 +19,7 @@ export default async function preRegistrationsRoutes(app: FastifyInstance) {
       schema: createPreRegistrationSchema,
       preHandler: [
         app.authenticate,
-        app.authorize(["preregistrations:create"]),
+        app.authorize(["erp:preregistrations:create"]),
       ],
     },
     createPreRegistrationHandler,
@@ -31,7 +31,7 @@ export default async function preRegistrationsRoutes(app: FastifyInstance) {
     "/v1/pre-registrations/:preRegistrationId",
     {
       schema: getPreRegistrationByIdSchema,
-      preHandler: [app.authenticate, app.authorize(["preregistrations:read"])],
+      preHandler: [app.authenticate, app.authorize(["erp:preregistrations:read"])],
     },
     getPreRegistrationByIdHandler,
   );
