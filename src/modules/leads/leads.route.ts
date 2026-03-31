@@ -13,6 +13,12 @@ export default async function leadsRoutes(app: FastifyInstance) {
     '/v1/leads',
     {
       schema: createLeadSchema,
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+        },
+      },
       preHandler: [app.authenticate, app.authorize(['erp:leads:create'])],
     },
     createLeadHandler

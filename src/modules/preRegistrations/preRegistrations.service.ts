@@ -9,6 +9,7 @@ import type {
   PreRegistrationDetailsResponse,
 } from "./preRegistrations.types";
 import { idempotencyService } from "../idempotency/idempotency.service";
+import { fileStorageService } from "../../shared/files/file-storage.service";
 
 function toSqlDateTime(date: Date): string {
   return date.toISOString().slice(0, 19).replace("T", " ");
@@ -51,7 +52,9 @@ export const preRegistrationsService = {
       attachments: (payload.attachments ?? []).map((attachment) => ({
         type: attachment.type.trim(),
         fileName: attachment.fileName.trim(),
-        storageKey: attachment.storageKey.trim(),
+        mimeType: attachment.mimeType.trim(),
+        encoding: attachment.encoding,
+        contentBase64: attachment.contentBase64.trim(),
       })),
     };
 
@@ -108,10 +111,33 @@ export const preRegistrationsService = {
         updatedAt: now,
       });
 
+      const persistedAttachments = [];
+      for (const attachment of normalizedPayload.attachments) {
+        const stored = await fileStorageService.saveBase64File({
+          preRegistrationId,
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          contentBase64: attachment.contentBase64,
+        });
+
+        persistedAttachments.push({
+          type: attachment.type,
+          fileName: stored.fileName,
+          storageKey: stored.storageKey,
+        });
+      }
+
       await preRegistrationsRepository.insertAttachments(
         conn,
         preRegistrationId,
-        normalizedPayload.attachments,
+        persistedAttachments,
+        now,
+      );
+
+      await preRegistrationsRepository.insertRequestedServices(
+        conn,
+        preRegistrationId,
+        normalizedPayload.requestedServices,
         now,
       );
 
@@ -177,6 +203,12 @@ export const preRegistrationsService = {
         });
       }
 
+      const requestedServices =
+        await preRegistrationsRepository.getRequestedServicesByPreRegistrationId(
+          conn,
+          preRegistrationId,
+        );
+
       const attachments =
         await preRegistrationsRepository.getAttachmentsByPreRegistrationId(
           conn,
@@ -210,7 +242,7 @@ export const preRegistrationsService = {
           city: preRegistration.city,
           line1: preRegistration.address_line1,
         },
-        requestedServices: [],
+        requestedServices,
         attachments: attachments.map((attachment) => ({
           type: attachment.attachment_type,
           fileName: attachment.file_name,

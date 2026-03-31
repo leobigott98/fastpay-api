@@ -7,6 +7,14 @@ export type PreRegistrationAttachment = {
   storageKey: string;
 };
 
+export type IncomingPreRegistrationAttachment = {
+  type: string;
+  fileName: string;
+  mimeType: string;
+  encoding: 'base64';
+  contentBase64: string;
+};
+
 export type CreatePreRegistrationRequest = {
   leadId?: string;
   applicantType: ApplicantType;
@@ -23,7 +31,7 @@ export type CreatePreRegistrationRequest = {
     line1?: string;
   };
   requestedServices?: string[];
-  attachments?: PreRegistrationAttachment[];
+  attachments?: IncomingPreRegistrationAttachment[];
   externalReference: string;
 };
 

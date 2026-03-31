@@ -17,6 +17,12 @@ export default async function preRegistrationsRoutes(app: FastifyInstance) {
     "/v1/pre-registrations",
     {
       schema: createPreRegistrationSchema,
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute",
+        },
+      },
       preHandler: [
         app.authenticate,
         app.authorize(["erp:preregistrations:create"]),

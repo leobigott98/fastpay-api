@@ -1,13 +1,13 @@
-import type { PoolConnection } from 'mariadb';
+import type { PoolConnection } from "mariadb";
 import type {
   PreRegistrationAttachmentRecord,
   PreRegistrationRecord,
-} from './preRegistrations.types';
+} from "./preRegistrations.types";
 
 export const preRegistrationsRepository = {
   async findByExternalReference(
     conn: PoolConnection,
-    externalReference: string
+    externalReference: string,
   ): Promise<PreRegistrationRecord | null> {
     const rows = await conn.query(
       `
@@ -16,7 +16,7 @@ export const preRegistrationsRepository = {
       WHERE external_reference = ?
       LIMIT 1
       `,
-      [externalReference]
+      [externalReference],
     );
 
     return rows[0] ?? null;
@@ -24,7 +24,7 @@ export const preRegistrationsRepository = {
 
   async findByPreRegistrationId(
     conn: PoolConnection,
-    preRegistrationId: string
+    preRegistrationId: string,
   ): Promise<PreRegistrationRecord | null> {
     const rows = await conn.query(
       `
@@ -33,7 +33,7 @@ export const preRegistrationsRepository = {
       WHERE pre_registration_id = ?
       LIMIT 1
       `,
-      [preRegistrationId]
+      [preRegistrationId],
     );
 
     return rows[0] ?? null;
@@ -59,7 +59,7 @@ export const preRegistrationsRepository = {
       externalReference: string;
       createdAt: string;
       updatedAt: string;
-    }
+    },
   ): Promise<void> {
     await conn.query(
       `
@@ -101,7 +101,7 @@ export const preRegistrationsRepository = {
         preRegistration.externalReference,
         preRegistration.createdAt,
         preRegistration.updatedAt,
-      ]
+      ],
     );
   },
 
@@ -113,7 +113,7 @@ export const preRegistrationsRepository = {
       fileName: string;
       storageKey: string;
     }>,
-    createdAt: string
+    createdAt: string,
   ): Promise<void> {
     for (const attachment of attachments) {
       await conn.query(
@@ -132,14 +132,14 @@ export const preRegistrationsRepository = {
           attachment.fileName,
           attachment.storageKey,
           createdAt,
-        ]
+        ],
       );
     }
   },
 
   async getAttachmentsByPreRegistrationId(
     conn: PoolConnection,
-    preRegistrationId: string
+    preRegistrationId: string,
   ): Promise<PreRegistrationAttachmentRecord[]> {
     const rows = await conn.query(
       `
@@ -151,7 +151,7 @@ export const preRegistrationsRepository = {
       WHERE pre_registration_id = ?
       ORDER BY id ASC
       `,
-      [preRegistrationId]
+      [preRegistrationId],
     );
 
     return rows;
@@ -168,7 +168,7 @@ export const preRegistrationsRepository = {
       actorId: string;
       correlationId?: string;
       createdAt: string;
-    }
+    },
   ): Promise<void> {
     await conn.query(
       `
@@ -192,7 +192,44 @@ export const preRegistrationsRepository = {
         params.actorId,
         params.correlationId ?? null,
         params.createdAt,
-      ]
+      ],
     );
+  },
+
+  async insertRequestedServices(
+    conn: PoolConnection,
+    preRegistrationId: string,
+    services: string[],
+    createdAt: string,
+  ): Promise<void> {
+    for (const service of services) {
+      await conn.query(
+        `
+      INSERT INTO ai_pre_registration_services (
+        pre_registration_id,
+        service_code,
+        created_at
+      ) VALUES (?, ?, ?)
+      `,
+        [preRegistrationId, service, createdAt],
+      );
+    }
+  },
+
+  async getRequestedServicesByPreRegistrationId(
+    conn: PoolConnection,
+    preRegistrationId: string,
+  ): Promise<string[]> {
+    const rows = await conn.query(
+      `
+    SELECT service_code
+    FROM ai_pre_registration_services
+    WHERE pre_registration_id = ?
+    ORDER BY id ASC
+    `,
+      [preRegistrationId],
+    );
+
+    return rows.map((row: { service_code: string }) => row.service_code);
   },
 };

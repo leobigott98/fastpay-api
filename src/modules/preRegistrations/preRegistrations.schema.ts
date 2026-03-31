@@ -53,11 +53,13 @@ export const createPreRegistrationSchema = {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['type', 'fileName', 'storageKey'],
+          required: ['type', 'fileName', 'mimeType', 'encoding', 'contentBase64'],
           properties: {
             type: { type: 'string', minLength: 1, maxLength: 50 },
             fileName: { type: 'string', minLength: 1, maxLength: 255 },
-            storageKey: { type: 'string', minLength: 1, maxLength: 255 },
+            mimeType: { type: 'string', minLength: 1, maxLength: 100 },
+            encoding: { type: 'string', enum: ['base64'] },
+            contentBase64: { type: 'string', minLength: 1 },
           },
         },
       },

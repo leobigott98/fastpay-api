@@ -11,6 +11,7 @@ import protectedRoutes from './modules/health/protected.route';
 import leadsRoutes from './modules/leads/leads.route';
 import preRegistrationsRoutes from './modules/preRegistrations/preRegistrations.route';
 import customersRoutes from './modules/customers/customers.route';
+import rateLimitPlugin from './plugins/rate-limit';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -27,6 +28,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(dbPlugin);
   await app.register(authPlugin);
   await app.register(errorHandlerPlugin);
+  await app.register(rateLimitPlugin);
 
   await app.register(healthRoutes);
   await app.register(protectedRoutes);

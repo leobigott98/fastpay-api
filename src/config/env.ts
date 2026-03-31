@@ -21,4 +21,8 @@ export const env = {
   JWT_EXPECTED_AUDIENCE: required('JWT_EXPECTED_AUDIENCE', process.env.JWT_EXPECTED_AUDIENCE),
 
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+
+  FASTPAY_SHARED_FILES_ROOT: required('FASTPAY_SHARED_FILES_ROOT',process.env.FASTPAY_SHARED_FILES_ROOT),
+  MAX_ATTACHMENT_SIZE_BYTES: Number(process.env.MAX_ATTACHMENT_SIZE_BYTES || 5242880),
+
 } as const;
