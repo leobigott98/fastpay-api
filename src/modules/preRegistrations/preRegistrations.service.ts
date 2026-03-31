@@ -1,16 +1,17 @@
-import { randomUUID } from 'crypto';
-import type { FastifyInstance } from 'fastify';
-import { AppError } from '../../shared/errors/app-error';
-import { ErrorCodes } from '../../shared/errors/error-codes';
-import { preRegistrationsRepository } from './preRegistrations.repository';
+import { randomUUID } from "crypto";
+import type { FastifyInstance } from "fastify";
+import { AppError } from "../../shared/errors/app-error";
+import { ErrorCodes } from "../../shared/errors/error-codes";
+import { preRegistrationsRepository } from "./preRegistrations.repository";
 import type {
   CreatePreRegistrationRequest,
   CreatePreRegistrationResponse,
   PreRegistrationDetailsResponse,
-} from './preRegistrations.types';
+} from "./preRegistrations.types";
+import { idempotencyService } from "../idempotency/idempotency.service";
 
 function toSqlDateTime(date: Date): string {
-  return date.toISOString().slice(0, 19).replace('T', ' ');
+  return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
 export const preRegistrationsService = {
@@ -21,7 +22,7 @@ export const preRegistrationsService = {
       idempotencyKey: string;
       actorId: string;
       correlationId: string;
-    }
+    },
   ): Promise<CreatePreRegistrationResponse> {
     const conn = await app.db.getConnection();
 
@@ -43,7 +44,9 @@ export const preRegistrationsService = {
         line1: payload.address?.line1?.trim(),
       },
       requestedServices: [
-        ...new Set((payload.requestedServices ?? []).map((service) => service.trim())),
+        ...new Set(
+          (payload.requestedServices ?? []).map((service) => service.trim()),
+        ),
       ],
       attachments: (payload.attachments ?? []).map((attachment) => ({
         type: attachment.type.trim(),
@@ -55,10 +58,21 @@ export const preRegistrationsService = {
     try {
       await conn.beginTransaction();
 
+      const idempotencyCheck = await idempotencyService.assertOrReplay(conn, {
+        idempotencyKey: context.idempotencyKey,
+        endpoint: "/v1/pre-registrations",
+        payload: normalizedPayload,
+      });
+
+      if (idempotencyCheck.type === "replay") {
+        await conn.rollback();
+        return idempotencyCheck.responseBody as CreatePreRegistrationResponse;
+      }
+
       const existingPreRegistration =
         await preRegistrationsRepository.findByExternalReference(
           conn,
-          normalizedPayload.externalReference
+          normalizedPayload.externalReference,
         );
 
       if (existingPreRegistration) {
@@ -88,7 +102,7 @@ export const preRegistrationsService = {
         state: normalizedPayload.address.state,
         city: normalizedPayload.address.city,
         addressLine1: normalizedPayload.address.line1,
-        status: 'PRE_REGISTRATION_PENDING',
+        status: "PRE_REGISTRATION_PENDING",
         externalReference: normalizedPayload.externalReference,
         createdAt: now,
         updatedAt: now,
@@ -98,27 +112,38 @@ export const preRegistrationsService = {
         conn,
         preRegistrationId,
         normalizedPayload.attachments,
-        now
+        now,
       );
 
       await preRegistrationsRepository.insertAuditLog(conn, {
-        eventType: 'PRE_REGISTRATION_CREATED',
-        resourceType: 'pre_registration',
+        eventType: "PRE_REGISTRATION_CREATED",
+        resourceType: "pre_registration",
         resourceId: preRegistrationId,
         externalReference: normalizedPayload.externalReference,
-        actorType: 'system_client',
+        actorType: "system_client",
         actorId: context.actorId,
         correlationId: context.correlationId,
         createdAt: now,
       });
 
-      await conn.commit();
-
-      return {
+      const response: CreatePreRegistrationResponse = {
         preRegistrationId,
-        status: 'PRE_REGISTRATION_PENDING',
+        status: "PRE_REGISTRATION_PENDING",
         createdAt: now,
       };
+
+      await idempotencyService.persistResult(conn, {
+        idempotencyKey: context.idempotencyKey,
+        endpoint: "/v1/pre-registrations",
+        requestHash: idempotencyCheck.requestHash,
+        responseBody: response,
+        statusCode: 201,
+        createdAt: now,
+      });
+
+      await conn.commit();
+
+      return response;
     } catch (error) {
       await conn.rollback();
       throw error;
@@ -133,7 +158,7 @@ export const preRegistrationsService = {
     context: {
       actorId: string;
       correlationId: string;
-    }
+    },
   ): Promise<PreRegistrationDetailsResponse> {
     const conn = await app.db.getConnection();
 
@@ -141,29 +166,29 @@ export const preRegistrationsService = {
       const preRegistration =
         await preRegistrationsRepository.findByPreRegistrationId(
           conn,
-          preRegistrationId
+          preRegistrationId,
         );
 
       if (!preRegistration) {
         throw new AppError({
           statusCode: 404,
           code: ErrorCodes.NOT_FOUND,
-          message: 'Pre-registration not found',
+          message: "Pre-registration not found",
         });
       }
 
       const attachments =
         await preRegistrationsRepository.getAttachmentsByPreRegistrationId(
           conn,
-          preRegistrationId
+          preRegistrationId,
         );
 
       await preRegistrationsRepository.insertAuditLog(conn, {
-        eventType: 'PRE_REGISTRATION_READ',
-        resourceType: 'pre_registration',
+        eventType: "PRE_REGISTRATION_READ",
+        resourceType: "pre_registration",
         resourceId: preRegistrationId,
         externalReference: preRegistration.external_reference,
-        actorType: 'system_client',
+        actorType: "system_client",
         actorId: context.actorId,
         correlationId: context.correlationId,
         createdAt: toSqlDateTime(new Date()),

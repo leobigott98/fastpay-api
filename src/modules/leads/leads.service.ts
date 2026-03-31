@@ -8,6 +8,7 @@ import type {
 import { leadsRepository } from "./leads.repository";
 import { AppError } from "../../shared/errors/app-error";
 import { ErrorCodes } from "../../shared/errors/error-codes";
+import { idempotencyService } from "../idempotency/idempotency.service";
 
 function toSqlDateTime(date: Date): string {
   return date.toISOString().slice(0, 19).replace("T", " ");
@@ -26,26 +27,35 @@ export const leadsService = {
     const conn = await app.db.getConnection();
 
     const normalizedPayload = {
-        ...payload,
-        source: payload.source.trim(),
-        channel: payload.channel,
-        fullName: payload.fullName.trim(),
-        documentType: payload.documentType?.trim(),
-        documentNumber: payload.documentNumber?.trim(),
-        phone: payload.phone.trim(),
-        email: payload.email?.trim().toLowerCase(),
-        businessName: payload.businessName?.trim(),
-        notes: payload.notes?.trim(),
-        externalReference: payload.externalReference.trim(),
-        interestedServices: [
-          ...new Set(
-            payload.interestedServices.map((service) => service.trim()),
-          ),
-        ],
-      };
+      ...payload,
+      source: payload.source.trim(),
+      channel: payload.channel,
+      fullName: payload.fullName.trim(),
+      documentType: payload.documentType?.trim(),
+      documentNumber: payload.documentNumber?.trim(),
+      phone: payload.phone.trim(),
+      email: payload.email?.trim().toLowerCase(),
+      businessName: payload.businessName?.trim(),
+      notes: payload.notes?.trim(),
+      externalReference: payload.externalReference.trim(),
+      interestedServices: [
+        ...new Set(payload.interestedServices.map((service) => service.trim())),
+      ],
+    };
 
     try {
       await conn.beginTransaction();
+
+      const idempotencyCheck = await idempotencyService.assertOrReplay(conn, {
+        idempotencyKey: context.idempotencyKey,
+        endpoint: "/v1/leads",
+        payload: normalizedPayload,
+      });
+
+      if (idempotencyCheck.type === "replay") {
+        await conn.rollback();
+        return idempotencyCheck.responseBody as CreateLeadResponse;
+      }
 
       const existingLead = await leadsRepository.findByExternalReference(
         conn,
@@ -102,13 +112,24 @@ export const leadsService = {
         createdAt: now,
       });
 
-      await conn.commit();
-
-      return {
+      const response: CreateLeadResponse = {
         leadId,
         status: "LEAD_CREATED",
         createdAt: now,
-      };
+      }
+
+      await idempotencyService.persistResult(conn, {
+        idempotencyKey: context.idempotencyKey,
+        endpoint: "/v1/leads",
+        requestHash: idempotencyCheck.requestHash,
+        responseBody: response,
+        statusCode: 201,
+        createdAt: now,
+      });
+
+      await conn.commit();
+
+      return response;
     } catch (error) {
       await conn.rollback();
       throw error;
