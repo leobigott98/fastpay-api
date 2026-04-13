@@ -1,6 +1,7 @@
 export const createPreRegistrationSchema = {
   tags: ['PreRegistrations'],
   summary: 'Create pre-registration',
+  description: 'Creates a pre-registration from Aliee and stores attachment files in FastPay shared storage.',
   security: [{ bearerAuth: [] }],
   headers: {
     type: 'object',
@@ -59,7 +60,7 @@ export const createPreRegistrationSchema = {
             fileName: { type: 'string', minLength: 1, maxLength: 255 },
             mimeType: { type: 'string', minLength: 1, maxLength: 100 },
             encoding: { type: 'string', enum: ['base64'] },
-            contentBase64: { type: 'string', minLength: 1 },
+            contentBase64: { type: 'string', minLength: 1, description: 'Base64-encoded file content' },
           },
         },
       },

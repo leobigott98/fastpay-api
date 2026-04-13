@@ -1,6 +1,5 @@
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import { env } from './config/env';
 import swaggerPlugin from './plugins/swagger';
 import dbPlugin from './plugins/db';
 import authPlugin from './plugins/auth';
@@ -12,12 +11,12 @@ import leadsRoutes from './modules/leads/leads.route';
 import preRegistrationsRoutes from './modules/preRegistrations/preRegistrations.route';
 import customersRoutes from './modules/customers/customers.route';
 import rateLimitPlugin from './plugins/rate-limit';
+import { baseLogger } from './shared/logging/logger';
+import requestTracingPlugin from './plugins/request-tracing';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: {
-      level: env.LOG_LEVEL,
-    },
+    loggerInstance: baseLogger,
     disableRequestLogging: false,
     requestIdHeader: 'x-correlation-id',
     requestIdLogLabel: 'correlationId',
@@ -29,6 +28,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authPlugin);
   await app.register(errorHandlerPlugin);
   await app.register(rateLimitPlugin);
+  await app.register(requestTracingPlugin);
 
   await app.register(healthRoutes);
   await app.register(protectedRoutes);
